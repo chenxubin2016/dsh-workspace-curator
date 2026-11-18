@@ -1,0 +1,51 @@
+{
+  "name": "dsh-workspace-curator",
+  "version": "1.0.0",
+  "description": "Manage workspaces and sessions from one Settings page.",
+  "type": "module",
+  "license": "MIT",
+  "author": "chenxubin2016",
+  "homepage": "https://github.com/chenxubin2016/dsh-workspace-curator#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chenxubin2016/dsh-workspace-curator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chenxubin2016/dsh-workspace-curator/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "workspace",
+    "session",
+    "archive",
+    "settings"
+  ],
+  "engines": {
+    "dsh": ">=0.2.2-rc.1"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "session-delete.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

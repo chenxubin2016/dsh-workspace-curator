@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Workspace curator",
+    "description": "A Settings page for workspace and session housekeeping: add, rename, reorder or remove workspaces, and archive or permanently delete sessions, refusing open or still-active ones.",
+    "detail": "docs/DETAIL.md"
+  }
+}

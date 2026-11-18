@@ -1,0 +1,3 @@
+- insert:
+    - id: workspace-curator
+      name: 'dsh-workspace-curator'

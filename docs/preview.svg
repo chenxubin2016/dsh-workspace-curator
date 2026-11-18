@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" width="640" height="300" role="img" aria-label="A settings page listing workspaces and sessions with a delete confirmation">
+  <rect x="0" y="0" width="640" height="300" rx="18" fill="#EEF1F7"/>
+  <rect x="32" y="32" width="576" height="236" rx="14" fill="#F7F9FC" stroke="#D6DDEA" stroke-width="1.5"/>
+
+  <rect x="52" y="54" width="104" height="10" rx="5" fill="#AAB6CA"/>
+  <rect x="52" y="80" width="128" height="26" rx="8" fill="#E3EAF6"/>
+  <rect x="68" y="90" width="58" height="7" rx="3.5" fill="#5B79A8"/>
+  <rect x="52" y="116" width="128" height="26" rx="8" fill="#3B6FE0" opacity="0.12"/>
+  <rect x="68" y="126" width="72" height="7" rx="3.5" fill="#3B6FE0"/>
+  <rect x="52" y="152" width="128" height="26" rx="8" fill="#E3EAF6"/>
+  <rect x="68" y="162" width="48" height="7" rx="3.5" fill="#5B79A8"/>
+  <rect x="52" y="214" width="86" height="8" rx="4" fill="#C3CDDD"/>
+
+  <rect x="204" y="54" width="180" height="12" rx="6" fill="#8D9DB7"/>
+  <rect x="204" y="78" width="384" height="52" rx="10" fill="#FFFFFF" stroke="#D6DDEA" stroke-width="1.5"/>
+  <rect x="220" y="92" width="14" height="14" rx="4" fill="#3B6FE0" opacity="0.85"/>
+  <rect x="244" y="94" width="126" height="9" rx="4.5" fill="#5E7396"/>
+  <rect x="244" y="110" width="188" height="7" rx="3.5" fill="#B5C1D4"/>
+  <rect x="520" y="92" width="24" height="24" rx="7" fill="#E3EAF6"/>
+  <rect x="526" y="100" width="12" height="2" rx="1" fill="#7C93B8"/>
+  <rect x="526" y="106" width="12" height="2" rx="1" fill="#7C93B8"/>
+  <rect x="528" y="112" width="8" height="2" rx="1" fill="#7C93B8"/>
+
+  <rect x="204" y="142" width="384" height="52" rx="10" fill="#FFFFFF" stroke="#D6DDEA" stroke-width="1.5"/>
+  <rect x="220" y="156" width="14" height="14" rx="4" fill="#3B6FE0" opacity="0.55"/>
+  <rect x="244" y="158" width="104" height="9" rx="4.5" fill="#5E7396"/>
+  <rect x="244" y="174" width="164" height="7" rx="3.5" fill="#B5C1D4"/>
+  <rect x="520" y="156" width="24" height="24" rx="7" fill="#E3EAF6"/>
+
+  <rect x="204" y="206" width="384" height="52" rx="10" fill="#FFFFFF" stroke="#D6DDEA" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <rect x="220" y="220" width="14" height="14" rx="4" fill="#C3CDDD"/>
+  <rect x="244" y="222" width="88" height="9" rx="4.5" fill="#8D9DB7"/>
+  <rect x="244" y="238" width="142" height="7" rx="3.5" fill="#D6DDEA"/>
+
+  <rect x="322" y="112" width="268" height="128" rx="14" fill="#FFFFFF" stroke="#D6DDEA" stroke-width="1.5"/>
+  <circle cx="352" cy="146" r="14" fill="#FBE7E7"/>
+  <path d="M346 141h12M349 141v-3h6v3M347.5 144l1 17h9l1-17" fill="none" stroke="#D64545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="376" y="136" width="150" height="11" rx="5.5" fill="#5E7396"/>
+  <rect x="340" y="170" width="230" height="8" rx="4" fill="#B5C1D4"/>
+  <rect x="340" y="186" width="196" height="8" rx="4" fill="#D6DDEA"/>
+  <rect x="452" y="210" width="52" height="22" rx="8" fill="#EEF1F7"/>
+  <rect x="512" y="210" width="58" height="22" rx="8" fill="#D64545"/>
+  <rect x="525" y="218" width="32" height="7" rx="3.5" fill="#FFFFFF"/>
+</svg>
