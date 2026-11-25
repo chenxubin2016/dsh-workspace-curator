@@ -109,6 +109,7 @@ window.__ModuleLoader__.load({
       'err.badId': '会话标识无效，未执行删除。',
       'err.layout': '该会话的存储格式无法安全删除，已取消。',
       'err.workspaceGone': '该工作区已不存在。',
+      'err.lastWorkspace': '这是最后一个工作区，无法删除。请先添加另一个工作区。',
       'err.archiveActive': '会话仍在运行，无法归档。请先停止它的工作。',
       'err.pickerUnavailable': '当前环境不支持系统目录选择器，请直接输入文件夹路径。',
       'err.nameConflict': '已存在同名工作区，请换一个名称。',
@@ -202,6 +203,7 @@ window.__ModuleLoader__.load({
       'err.badId': 'Invalid session id; nothing was deleted.',
       'err.layout': 'This session uses a storage format that cannot be removed safely; deletion was cancelled.',
       'err.workspaceGone': 'That workspace no longer exists.',
+      'err.lastWorkspace': 'This is the only workspace and cannot be deleted. Add another workspace first.',
       'err.archiveActive': 'The session is still running, so it cannot be archived. Stop its work first.',
       'err.pickerUnavailable': 'This environment has no system folder picker; type the folder path instead.',
       'err.nameConflict': 'A workspace with that name already exists.',
@@ -270,6 +272,7 @@ window.__ModuleLoader__.load({
         case 'workspace/invalid-path': return t('err.invalidPath')
         case 'workspace/session-active': return t('err.archiveActive')
         case 'workspace/protected-path': return t('err.protectedPath')
+        case 'workspace/last-workspace': return t('err.lastWorkspace')
         case 'workspace/folder-delete-failed': return t('err.folderFailed', { message: error?.message ?? String(error) })
         case 'workspace/session-delete-failed': return t('err.workspaceDeleteFailed', { message: error?.message ?? String(error) })
         case 'directory-picker/unavailable': return t('err.pickerUnavailable')
@@ -864,6 +867,10 @@ window.__ModuleLoader__.load({
      */
     function DeleteDialog({ t, dialog, uiWorkspace, workspaces, sessions, callAdmin, notify }) {
       const request = React.useSyncExternalStore(dialog.subscribe, dialog.getSnapshot)
+      const workspaceCount = React.useSyncExternalStore(
+        callback => workspaces.list.subscribe(callback),
+        () => workspaces.list.getSnapshot().items.length,
+      )
       const [busy, setBusy] = React.useState(false)
       const [error, setError] = React.useState(null)
 
@@ -875,13 +882,14 @@ window.__ModuleLoader__.load({
       if (request === null) return null
 
       const isWorkspace = request.kind === 'workspace'
+      const onlyWorkspace = isWorkspace && workspaceCount <= 1
       const close = () => {
         if (busy) return
         dialog.set(null)
         setError(null)
       }
       const confirm = () => {
-        if (busy) return
+        if (busy || onlyWorkspace) return
         setBusy(true)
         setError(null)
         void (async () => {
@@ -971,7 +979,7 @@ window.__ModuleLoader__.load({
           h(Button, {
             variant: 'outline',
             style: { color: T.danger },
-            disabled: busy,
+            disabled: busy || onlyWorkspace,
             onClick: confirm,
           }, busy ? t('confirm.deleting') : (isWorkspace ? t('dialog.deleteWorkspace') : t('dialog.deleteSession')))),
       },
@@ -984,7 +992,9 @@ window.__ModuleLoader__.load({
             fontFamily: 'var(--dsw-font-mono, monospace)', overflowWrap: 'anywhere',
           },
         }, request.path) : null,
-        isWorkspace ? h('div', { style: { fontSize: 12, lineHeight: '18px', color: T.danger } },
+        onlyWorkspace ? h('div', { role: 'alert', style: { fontSize: 12, lineHeight: '18px', color: T.danger } },
+          t('err.lastWorkspace')) : null,
+        isWorkspace && !onlyWorkspace ? h('div', { style: { fontSize: 12, lineHeight: '18px', color: T.danger } },
           t('dialog.folderWarning')) : null,
         h('div', { style: { fontSize: 12, lineHeight: '18px', color: T.tertiary } }, t('dialog.liveNote')),
         error === null ? null : h('div', { role: 'alert', style: { fontSize: 12, lineHeight: '18px', color: T.danger } }, error)))

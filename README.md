@@ -14,6 +14,9 @@ A DeepSeek Harness (DSH) plugin for workspace and session housekeeping.
   compatibility shim so only one delete entry is visible. Other access checks
   are untouched; if a future DSH release makes the action inaccessible to
   plugins, the native item may reappear.
+- The last remaining Workspace cannot be deleted: the dialog disables
+  confirmation and the Host also refuses the request. DSH would otherwise
+  initialize a fresh default Workspace with a blank Session after the restart.
 - Keeps the **Settings → Workspace curator** page for adding, renaming,
   reordering workspaces and for an overview of sessions.
 - Archiving a running session still stops its work first.

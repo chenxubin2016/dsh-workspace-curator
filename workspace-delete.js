@@ -124,6 +124,13 @@ export async function deleteWorkspaceTree(ctx, pending, workspaceId) {
     throw new AdminError('workspace/not-found', `Workspace "${workspaceId}" was not found`, 404, { workspaceId })
   }
 
+  // Removing the only Workspace makes DSH initialize a fresh default
+  // Workspace on the next restore, complete with a blank Session. Refuse it
+  // instead of silently creating replacement data.
+  if (ctx.workspaceRegistry.list().length <= 1) {
+    throw new AdminError('workspace/last-workspace', 'The only workspace cannot be deleted', 409, { workspaceId })
+  }
+
   const pathCheck = await assertWorkspacePathRemovable(workspace.path)
   const sessionIds = [...workspace.sessionIds]
   let deleted = 0
