@@ -992,9 +992,12 @@ window.__ModuleLoader__.load({
             ctx.workspaces.list,
             ctx.locale,
             ctx.remoteAccess.source('session', sessionId, 'workspace/archiveSession'),
+            ctx.remoteAccess.source('session', sessionId, 'workspace/unarchiveSession'),
           ],
           resolve: (target) => {
-            const allowed = ctx.remoteAccess.source('session', target.sessionId, 'workspace/archiveSession').getSnapshot()
+            const archived = ctx.workspaces.list.getSnapshot().archivedSessionIds.includes(target.sessionId)
+            const endpoint = archived ? 'workspace/unarchiveSession' : 'workspace/archiveSession'
+            const allowed = ctx.remoteAccess.source('session', target.sessionId, endpoint).getSnapshot()
             if (!allowed) return []
             return [{
               id: 'delete',
