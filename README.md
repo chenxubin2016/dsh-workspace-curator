@@ -4,9 +4,11 @@
 
 ## 操作演示
 
-![删除会话与工作区操作演示](https://raw.githubusercontent.com/chenxubin2016/dsh-workspace-curator/main/docs/demo.gif?v=4)
+![删除会话与工作区操作演示](https://raw.githubusercontent.com/chenxubin2016/dsh-workspace-curator/main/docs/demo.gif?v=5)
 
-> 删除后的右侧会话区使用 DSH 实际的空会话界面截图；菜单与确认框为操作示意。动画中的会话、项目名称与路径均为虚构示例。
+> 上图为操作示意：① 会话行 `…` →「删除会话」；② 工作区行 `…` →「删除工作区」。实际界面以当前 DSH 版本为准。
+>
+> 动画中的会话、项目名称与路径均为虚构示例。
 
 ## 2.0.0 更新内容
 
