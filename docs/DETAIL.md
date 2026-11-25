@@ -1,1 +1,1 @@
-![Animated demo: delete a session from its row menu, then delete a workspace and its folder](demo.gif?v=2)
+操作步骤与说明见 README。

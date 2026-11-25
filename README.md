@@ -2,11 +2,9 @@
 
 一个用于 **DeepSeek Harness（DSH）** 的工作区 / 会话管理插件：在会话和工作区的 `…` / 右键菜单里直接删除，也可以在设置页里集中管理。
 
-![删除会话与工作区操作演示](https://raw.githubusercontent.com/chenxubin2016/dsh-workspace-curator/main/docs/demo.gif?v=2)
+## 操作演示
 
-> 上图为操作示意：① 会话行 `…` →「删除会话」；② 工作区行 `…` →「删除工作区」。实际界面以当前 DSH 版本为准。
->
-> 动画中的会话、项目名称与路径均为虚构示例。
+本仓库不提供模拟界面动画，避免与实际 UI 不一致。请按下方「使用说明」操作；如需动画，建议用真实界面录屏后制作。
 
 ## 2.0.0 更新内容
 
@@ -127,7 +125,6 @@ DSH 的会话持久化接口没有删除动作，因此本插件直接移除会�
 - `pending-deletions.js` — 打开中会话的持久化待删除队列。
 - `workspace-delete.js` — 工作区级联、文件夹删除、路径保护。
 - `client.js` — 设置页、菜单贡献、确认弹窗、重复菜单自检。
-- `docs/demo.gif` — 操作示意动画；`docs/demo-poster.png` — 静态封面。
 
 ## License
 
