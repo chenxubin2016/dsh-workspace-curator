@@ -887,10 +887,19 @@ window.__ModuleLoader__.load({
             if (isWorkspace) {
               const snapshot = workspaces.list.getSnapshot()
               const workspace = snapshot.items.find(item => item.workspaceId === request.id)
-              const current = Object.values(sessions.list.getSnapshot().byId)
+              const sessionSnapshot = sessions.list.getSnapshot()
+              const current = Object.values(sessionSnapshot.byId)
                 .find(row => (row.retainedBy?.mainView ?? 0) > 0)
+              // Move the selection out before the Host archives/deletes the
+              // workspace's sessions; clearing the selection is what makes DSH
+              // reveal or create a blank “新会话”.
               if (workspace !== undefined && current !== undefined && workspace.sessionIds.includes(current.id)) {
-                await uiWorkspace.archiveSession(current.id, { stopActivity: true }).catch(() => {})
+                const excluded = new Set(workspace.sessionIds)
+                const alternative = sessionSnapshot.ids
+                  .map(id => sessionSnapshot.byId[id])
+                  .find(row => row !== undefined && !excluded.has(row.id) && !row.blank
+                    && row.origin !== 'subagent' && !snapshot.archivedSessionIds.includes(row.id))
+                if (alternative !== undefined) uiWorkspace.openSession(alternative.id)
               }
               const result = await callAdmin('delete-workspace', { workspaceId: request.id, confirmFolder: true })
               await sessions.refresh().catch(() => {})
@@ -903,9 +912,16 @@ window.__ModuleLoader__.load({
               return
             }
 
-            const archived = workspaces.list.getSnapshot().archivedSessionIds.includes(request.id)
-            if (!archived) {
-              await uiWorkspace.archiveSession(request.id, { stopActivity: true })
+            const sessionSnapshot = sessions.list.getSnapshot()
+            const workspaceSnapshot = workspaces.list.getSnapshot()
+            const current = Object.values(sessionSnapshot.byId)
+              .find(row => (row.retainedBy?.mainView ?? 0) > 0)
+            if (current?.id === request.id) {
+              const alternative = sessionSnapshot.ids
+                .map(id => sessionSnapshot.byId[id])
+                .find(row => row !== undefined && row.id !== request.id && !row.blank
+                  && row.origin !== 'subagent' && !workspaceSnapshot.archivedSessionIds.includes(row.id))
+              if (alternative !== undefined) uiWorkspace.openSession(alternative.id)
             }
             const result = await callAdmin('delete-session', { sessionId: request.id })
             await sessions.refresh().catch(() => {})
