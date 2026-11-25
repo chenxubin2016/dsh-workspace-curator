@@ -49,11 +49,14 @@ export class PendingDeletions {
     }
   }
 
-  /** Persist the current ids atomically. */
-  async save() {
+  /**
+   * Persist one id snapshot atomically.
+   * @param ids - ids to write.
+   */
+  async save(ids) {
     await mkdir(dirname(this.file), { recursive: true })
     const temporary = `${this.file}.${process.pid}.tmp`
-    await writeFile(temporary, JSON.stringify(this.ids), 'utf8')
+    await writeFile(temporary, JSON.stringify(ids), 'utf8')
     await rename(temporary, this.file)
   }
 
@@ -68,13 +71,17 @@ export class PendingDeletions {
    */
   async queue(sessionId) {
     await this.ready()
-    this.tail = this.tail.then(async () => {
+    const operation = this.tail.then(async () => {
       if (!this.ids.includes(sessionId)) {
-        this.ids = [...this.ids, sessionId]
-        await this.save()
+        const next = [...this.ids, sessionId]
+        await this.save(next)
+        this.ids = next
       }
     })
-    await this.tail
+    // Keep the chain usable after a failed write; the caller still sees the
+    // failure and can retry.
+    this.tail = operation.catch(() => {})
+    await operation
   }
 
   /**
@@ -92,14 +99,15 @@ export class PendingDeletions {
    */
   async forget(sessionId) {
     await this.ready()
-    this.tail = this.tail.then(async () => {
+    const operation = this.tail.then(async () => {
       const next = this.ids.filter(id => id !== sessionId)
       if (next.length !== this.ids.length) {
+        await this.save(next)
         this.ids = next
-        await this.save()
       }
     })
-    await this.tail
+    this.tail = operation.catch(() => {})
+    await operation
   }
 
   /** Nothing to close for a file-backed queue. */

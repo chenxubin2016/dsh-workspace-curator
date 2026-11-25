@@ -895,11 +895,18 @@ window.__ModuleLoader__.load({
               // reveal or create a blank “新会话”.
               if (workspace !== undefined && current !== undefined && workspace.sessionIds.includes(current.id)) {
                 const excluded = new Set(workspace.sessionIds)
+                const insideWorkspace = row => typeof row.cwd === 'string'
+                  && (row.cwd === workspace.path
+                    || row.cwd.startsWith(`${workspace.path}/`)
+                    || row.cwd.startsWith(`${workspace.path}\\`))
                 const alternative = sessionSnapshot.ids
                   .map(id => sessionSnapshot.byId[id])
                   .find(row => row !== undefined && !excluded.has(row.id) && !row.blank
-                    && row.origin !== 'subagent' && !snapshot.archivedSessionIds.includes(row.id))
-                if (alternative !== undefined) uiWorkspace.openSession(alternative.id)
+                    && row.origin !== 'subagent' && !snapshot.archivedSessionIds.includes(row.id)
+                    && !insideWorkspace(row))
+                if (alternative !== undefined) {
+                  try { uiWorkspace.openSession(alternative.id) } catch (error) { console.warn('workspace-curator: could not select an alternative Session', error) }
+                }
               }
               const result = await callAdmin('delete-workspace', { workspaceId: request.id, confirmFolder: true })
               await sessions.refresh().catch(() => {})
@@ -921,7 +928,9 @@ window.__ModuleLoader__.load({
                 .map(id => sessionSnapshot.byId[id])
                 .find(row => row !== undefined && row.id !== request.id && !row.blank
                   && row.origin !== 'subagent' && !workspaceSnapshot.archivedSessionIds.includes(row.id))
-              if (alternative !== undefined) uiWorkspace.openSession(alternative.id)
+              if (alternative !== undefined) {
+                try { uiWorkspace.openSession(alternative.id) } catch (error) { console.warn('workspace-curator: could not select an alternative Session', error) }
+              }
             }
             const result = await callAdmin('delete-session', { sessionId: request.id })
             await sessions.refresh().catch(() => {})
