@@ -1,78 +1,131 @@
-# Workspace curator
+# 工作区管家（dsh-workspace-curator）
 
-A DeepSeek Harness (DSH) plugin for workspace and session housekeeping.
+一个用于 **DeepSeek Harness（DSH）** 的工作区 / 会话管理插件：在会话和工作区的 `…` / 右键菜单里直接删除，也可以在设置页里集中管理。
 
-## Features
+![删除会话与工作区操作演示](https://raw.githubusercontent.com/chenxubin2016/dsh-workspace-curator/main/docs/demo.gif)
 
-- Adds **Delete session** to the session row's `…` / right-click menu; no
-  Settings trip and no keyboard shortcut is registered.
-- Replaces the workspace row's delete entry with **Delete workspace**: the
-  confirmation keeps the native wording the product expects, shows the session
-  count and folder path, and then removes every session, the workspace folder,
-  and the workspace registration.
-- The plugin hides the native DSH workspace-delete action with a small
-  compatibility shim so only one delete entry is visible. At startup it also
-  resolves the real workspace menu and verifies the native action is absent; if
-  a DSH update changes that behavior, the plugin removes its own menu entry, so
-  the menu still shows at most one delete item (the native one). The Settings
-  page always keeps the cascade deletion.
-- The last remaining Workspace cannot be deleted: the dialog disables
-  confirmation and the Host also refuses the request. DSH would otherwise
-  initialize a fresh default Workspace with a blank Session after the restart.
-- Keeps the **Settings → Workspace curator** page for adding, renaming,
-  reordering workspaces and for an overview of sessions.
-- Archiving a running session still stops its work first.
-- Shows session counts and folder paths before deleting user files.
+> 上图为操作示意：① 会话行 `…` →「删除会话」；② 工作区行 `…` →「删除工作区」。实际界面以当前 DSH 版本为准。
 
-## Install
+## 2.0.0 更新内容
 
-From the plugin market, or:
+### 新增
+
+- **会话菜单删除**：会话行右侧 `…` 或右键 →「删除会话」，不需要再进设置页；不注册快捷键。
+- **工作区菜单删除**：工作区行右侧 `…` 或右键 →「删除工作区」。
+- **工作区级联删除**：确认后删除该工作区的**全部会话**、**工作区文件夹**和**工作区注册**，不保留文件夹。
+- **单一删除项**：隐藏 DSH 原生的「删除工作区」项，并对真实菜单做启动自检；如果 DSH 升级导致隐藏失效，插件会自动撤下自己的删除项，菜单中**最多只有一个**删除工作区入口，不会出现两个。
+- **打开中的会话**：不再拒绝删除。会话会先归档、停止工作并从列表消失，磁盘日志在**下次启动 DSH** 时清理；界面会提示重启。
+- **最后一个工作区保护**：只剩一个工作区时无法删除，弹窗会禁用「确认删除」，Host 也会拒绝请求；请先添加另一个工作区。
+- **避免空白「新会话」**：删除当前会话所在的工作区前，会先切换到另一个可用会话，避免 DSH 因选中项消失而露出或新建空白会话。
+- **更明确的工作区确认框**：
+  - 标题：删除工作区
+  - 文案：将把「XXX」从工作区列表中删除，工作区下的会话将会被删除。
+  - 显示会话数量、文件夹路径
+  - 红色警告：工作区文件夹及其中的所有文件也会被永久删除，无法恢复。
+  - 按钮：取消 / 确认删除
+- **提示更准确**：打开中的会话会计入删除总数，显示「已删除 N 个会话……其中 M 个打开中的会话将在重启后清理」。
+- **安全与可靠性**：
+  - 受保护路径拒绝删除：当前工作目录、home、文件系统根目录、`~/.dsh`、profile、DSH 安装目录、符号链接变化等。
+  - 待删除队列原子写入；写入失败可重试，不会留下“假排队”状态。
+  - 会话 / 工作区部分引用清理失败时会显示警告。
+- **设置页保留**：**设置 → 工作区管家** 仍可添加、重命名、排序工作区、查看会话总览，并使用同一套删除确认。
+
+### 行为变化（相比 1.0.0）
+
+- 移除了“打开中的会话不能删除，请改用归档”的红色拒绝提示。
+- 工作区删除从“只移除注册、保留文件和会话”改为“删除全部会话 + 删除文件夹 + 移除注册”。
+- 工作区确认框不再使用复选框，改为明确的红色文件夹警告 +「取消 / 确认删除」。
+- 工作区删除菜单不绑定快捷键。
+- 只有一个工作区时不能删除。
+
+## 使用说明
+
+### 删除单个会话
+
+1. 在左侧找到要删除的会话。
+2. 点击行尾的 `…`，或右键打开菜单。
+3. 选择「删除会话」。
+4. 在确认框里点击「删除」。
+
+结果：
+
+- 没有打开、没有运行中工作的会话：日志、子代理会话、归档 / 置顶引用立即删除。
+- 正在打开或运行的会话：先归档并停止工作，日志在下次启动 DSH 后清理；会有重启提示。
+
+### 删除工作区
+
+1. 在工作区标题行点击 `…`，或右键打开菜单。
+2. 选择「删除工作区」。
+3. 确认框会显示：
+   - 该工作区下的会话数量；
+   - 工作区文件夹路径；
+   - 文件夹及其中所有文件会被永久删除的警告。
+4. 点击「确认删除」。
+
+确认后会：
+
+1. 删除或排队该工作区的全部会话；
+2. 递归删除工作区文件夹；
+3. 移除工作区注册。
+
+> ⚠️ 文件夹删除不可恢复，且文件夹里可能包含与 DSH 无关的文件。请先用一次性目录测试。
+>
+> 如果这是唯一的工作区，弹窗会提示先添加另一个工作区，无法直接删除。
+>
+> 正在打开中的会话会在重启 DSH 后完成磁盘日志清理。
+
+### 设置页
+
+打开 **设置 → 工作区管家**：
+
+- 添加、重命名、排序工作区；
+- 查看每个工作区的会话；
+- 对会话或工作区执行同样的删除流程。
+
+## 安装
+
+从插件市场安装，或执行：
 
 ```sh
-dsh plugin --profile web add dsh-workspace-curator
+dsh plugin --profile web add dsh-workspace-curator@2.0.0
 ```
 
-Desktop users install through **Settings → Plugins**. Use the profile name your
-Host actually runs instead of `web` when it differs.
+桌面端可以在 **设置 → 插件** 中安装。请把 `web` 换成你实际运行的 profile 名称。
 
-Requires DSH `0.2.2-rc.5` or newer.
+要求 DSH `0.2.2-rc.5` 或更新版本。
 
-## Permanent deletion
+## 删除行为与限制
 
-DSH's session persistence seam has no delete verb, so this bundle removes the
-log directories itself. Confirmation is required before anything is removed.
+DSH 的会话持久化接口没有删除动作，因此本插件直接移除会话日志目录。
 
-- **Cold session**: log, subagent descendants, workspace account references,
-  archive entry, and pin entry are removed immediately.
-- **Live session**: the Agent still owns a write handle, so the session is
-  archived (its running work stops and it disappears from the list) and its id
-  is queued. The log is removed at the next DSH start. The UI shows
-  **restart DSH to finish cleaning the disk log**; it no longer refuses the
-  action.
-- **Workspace**: every session is deleted or queued, then the workspace folder
-  is removed recursively, then the registration is removed. The folder may
-  contain files unrelated to DSH; the confirmation says so and requires an
-  explicit checkbox. The Host refuses to remove the running working directory,
-  the home directory, filesystem roots, or DSH-managed folders.
+- **冷会话**：日志、子代理后代、工作区引用、归档记录、置顶记录立即移除。
+- **打开中的会话**：归档并停止工作；id 写入持久化待删除队列，下次 Host 启动时删除日志。
+- **工作区**：所有会话删除或排队后，删除文件夹，再移除注册。
+- **附件和投影缓存**：只删除会话日志和选中的工作区文件夹；位于其他位置的附件、缓存可能继续占用磁盘。
+- **受保护路径**：不会删除当前工作目录、home、根目录、`~/.dsh`、profile、DSH 安装目录；路径变成符号链接或解析到别处时也会拒绝。
+- **单一删除入口**：如果 DSH 升级后原生工作区删除项无法隐藏，插件会撤下自己的菜单项，只保留原生项；此时级联删除仍可在设置页使用。
+- **待删除队列**：写入采用临时文件 + 原子替换；重启清理失败时会保留记录，下次继续尝试。
 
-Only session logs and the selected workspace folder are removed. Attachments
-and projection caches outside the folder may remain.
+## 从 1.0.0 升级
 
-## Endpoint trust
+2.0.0 的菜单和删除行为变化较大：
 
-`/api/workspace-curator` is an exact Fetch route on DSH's shared `/api`
-channel. The connection layer authenticates the browser cookie and applies its
-Host/Origin fence before the handler runs. The handler additionally requires
-`x-workspace-curator: 1` and `content-type: application/json` on `POST`.
+- 会话删除从设置页搬到会话行菜单；
+- 删除打开中的会话不再被拒绝，而是归档 + 重启清理；
+- 工作区删除现在会删除文件夹和全部会话；
+- 最后一个工作区不能删除；
+- 不注册任何键盘快捷键。
 
-## Development
+升级后建议先在一个一次性工作区 / 测试会话上验证菜单和确认框。
 
-- `index.js` — Host route.
-- `session-delete.js` — per-session deletion tree and storage validation.
-- `pending-deletions.js` — durable queue for live sessions.
-- `workspace-delete.js` — cascade, folder removal, and path protection.
-- `client.js` — Settings page, context-menu contributions, and confirmation
-  overlay.
+## 开发
+
+- `index.js` — Host 路由。
+- `session-delete.js` — 单个会话的删除树、存储格式校验。
+- `pending-deletions.js` — 打开中会话的持久化待删除队列。
+- `workspace-delete.js` — 工作区级联、文件夹删除、路径保护。
+- `client.js` — 设置页、菜单贡献、确认弹窗、重复菜单自检。
+- `docs/demo.gif` — 操作示意动画；`docs/demo-poster.png` — 静态封面。
 
 ## License
 

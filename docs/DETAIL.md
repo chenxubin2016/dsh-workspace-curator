@@ -1,1 +1,1 @@
-![A settings page listing workspaces and sessions with a delete confirmation](preview.svg)
+![Animated demo: delete a session from its row menu, then delete a workspace and its folder](demo.gif)
