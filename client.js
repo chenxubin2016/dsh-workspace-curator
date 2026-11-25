@@ -72,16 +72,17 @@ window.__ModuleLoader__.load({
       'confirm.archiveAction': '停止并归档',
       'confirm.deleting': '正在删除…',
       'confirm.archiving': '正在停止并归档…',
-      'menu.deleteSession': '永久删除会话',
-      'menu.deleteWorkspace': '删除工作区及其会话',
-      'dialog.deleteSession.title': '永久删除此会话？',
+      'menu.deleteSession': '删除会话',
+      'menu.deleteWorkspace': '删除工作区',
+      'dialog.deleteSession.title': '删除会话？',
       'dialog.deleteSession.body': '“{name}”的会话日志会从磁盘移除，无法恢复。如果它包含子代理会话，这些子会话也会一并删除。',
-      'dialog.deleteWorkspace.title': '删除工作区及其会话？',
-      'dialog.deleteWorkspace.body': '将删除“{name}”下的 {count} 个会话，并永久删除文件夹：\n{path}\n文件夹中的所有文件（包括非 DSH 文件）都会消失，无法恢复。',
+      'dialog.deleteWorkspace.title': '删除工作区',
+      'dialog.deleteWorkspace.body': '将把“{name}”从工作区列表中删除，工作区下的会话将会被删除。',
       'dialog.liveNote': '正在打开或运行的会话会先停止并从列表移除；磁盘日志将在重启 DSH 后清理。',
-      'dialog.folderConfirm': '我确认删除该文件夹及其全部内容',
-      'dialog.deleteSession': '永久删除',
-      'dialog.deleteWorkspace': '全部删除',
+      'dialog.workspaceCount': '共 {count} 个会话，将全部删除。',
+      'dialog.folderWarning': '工作区文件夹及其中的所有文件也会被永久删除，无法恢复。',
+      'dialog.deleteSession': '删除',
+      'dialog.deleteWorkspace': '确认删除',
       'rename.title': '重命名工作区',
       'rename.field': '工作区名称',
       'rename.submit': '保存',
@@ -163,16 +164,17 @@ window.__ModuleLoader__.load({
       'confirm.archiveAction': 'Stop and archive',
       'confirm.deleting': 'Deleting…',
       'confirm.archiving': 'Stopping and archiving…',
-      'menu.deleteSession': 'Delete session permanently',
-      'menu.deleteWorkspace': 'Delete workspace and its sessions',
-      'dialog.deleteSession.title': 'Delete this session permanently?',
+      'menu.deleteSession': 'Delete session',
+      'menu.deleteWorkspace': 'Delete workspace',
+      'dialog.deleteSession.title': 'Delete this session?',
       'dialog.deleteSession.body': 'The session log for “{name}” is removed from disk and cannot be recovered. Subagent sessions it contains are removed too.',
-      'dialog.deleteWorkspace.title': 'Delete this workspace and its sessions?',
-      'dialog.deleteWorkspace.body': 'This deletes {count} session(s) under “{name}” and permanently removes the folder:\n{path}\nEvery file in the folder, including files unrelated to DSH, is removed and cannot be recovered.',
+      'dialog.deleteWorkspace.title': 'Delete workspace',
+      'dialog.deleteWorkspace.body': '“{name}” will be removed from the workspace list, and its sessions will be deleted.',
       'dialog.liveNote': 'Sessions that are open or running are stopped and removed from the list first; their logs are cleaned after DSH restarts.',
-      'dialog.folderConfirm': 'I confirm deleting this folder and everything in it',
-      'dialog.deleteSession': 'Delete permanently',
-      'dialog.deleteWorkspace': 'Delete all',
+      'dialog.workspaceCount': '{count} session(s) in total; all will be deleted.',
+      'dialog.folderWarning': 'The workspace folder and every file in it will also be permanently deleted and cannot be recovered.',
+      'dialog.deleteSession': 'Delete',
+      'dialog.deleteWorkspace': 'Confirm delete',
       'rename.title': 'Rename workspace',
       'rename.field': 'Workspace name',
       'rename.submit': 'Save',
@@ -862,12 +864,10 @@ window.__ModuleLoader__.load({
       const request = React.useSyncExternalStore(dialog.subscribe, dialog.getSnapshot)
       const [busy, setBusy] = React.useState(false)
       const [error, setError] = React.useState(null)
-      const [folderConfirmed, setFolderConfirmed] = React.useState(false)
 
       React.useEffect(() => {
         setBusy(false)
         setError(null)
-        setFolderConfirmed(false)
       }, [request?.kind, request?.id])
 
       if (request === null) return null
@@ -876,11 +876,10 @@ window.__ModuleLoader__.load({
       const close = () => {
         if (busy) return
         dialog.set(null)
-        setFolderConfirmed(false)
         setError(null)
       }
       const confirm = () => {
-        if (busy || (isWorkspace && !folderConfirmed)) return
+        if (busy) return
         setBusy(true)
         setError(null)
         void (async () => {
@@ -937,22 +936,22 @@ window.__ModuleLoader__.load({
           h(Button, {
             variant: 'outline',
             style: { color: T.danger },
-            disabled: busy || (isWorkspace && !folderConfirmed),
+            disabled: busy,
             onClick: confirm,
           }, busy ? t('confirm.deleting') : (isWorkspace ? t('dialog.deleteWorkspace') : t('dialog.deleteSession')))),
       },
       h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+        isWorkspace ? h('div', { style: { fontSize: 12, lineHeight: '18px', color: T.secondary } },
+          t('dialog.workspaceCount', { count: request.count })) : null,
+        isWorkspace ? h('div', {
+          style: {
+            fontSize: 12, lineHeight: '18px', color: T.tertiary,
+            fontFamily: 'var(--dsw-font-mono, monospace)', overflowWrap: 'anywhere',
+          },
+        }, request.path) : null,
+        isWorkspace ? h('div', { style: { fontSize: 12, lineHeight: '18px', color: T.danger } },
+          t('dialog.folderWarning')) : null,
         h('div', { style: { fontSize: 12, lineHeight: '18px', color: T.tertiary } }, t('dialog.liveNote')),
-        isWorkspace ? h('label', {
-          style: { display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, lineHeight: '18px', color: T.secondary },
-        },
-        h('input', {
-          type: 'checkbox',
-          checked: folderConfirmed,
-          disabled: busy,
-          onChange: event => { setFolderConfirmed(event.target.checked) },
-        }),
-        t('dialog.folderConfirm')) : null,
         error === null ? null : h('div', { role: 'alert', style: { fontSize: 12, lineHeight: '18px', color: T.danger } }, error)))
     }
 
@@ -983,6 +982,30 @@ window.__ModuleLoader__.load({
         const deletionRequest = createSnapshotStore(null)
         const requestDeletion = request => { deletionRequest.set(request) }
         const notify = (text, success) => { ctx.contextMenus.notify(text, success) }
+
+        // Compatibility shim: DSH's workspace UI owns a native "删除工作区"
+        // action that only removes the registration. Hide that one action from
+        // the menu so our cascade action is the single visible entry. Other
+        // access checks are untouched.
+        const remoteAccess = ctx.remoteAccess
+        const originalSource = remoteAccess.source
+        const readAccess = (kind, id, action) => originalSource.call(remoteAccess, kind, id, action)
+        const hiddenAccess = { getSnapshot: () => false, subscribe: () => () => {} }
+        let accessPatched = false
+        try {
+          remoteAccess.source = function patchedSource(kind, id, action) {
+            if (kind === 'workspace' && action === 'workspace/delete') return hiddenAccess
+            return readAccess(kind, id, action)
+          }
+          accessPatched = true
+        } catch (error) {
+          console.warn('workspace-curator: could not hide the native workspace delete action', error)
+        }
+        if (accessPatched) {
+          ctx.effect(() => () => {
+            if (remoteAccess.source !== originalSource) remoteAccess.source = originalSource
+          }, 'workspace-curator: restore native workspace delete access')
+        }
 
         ctx.effect(() => ctx.contextMenus.register({
           id: 'session.workspaceCurator.delete',
@@ -1019,10 +1042,10 @@ window.__ModuleLoader__.load({
           observe: ({ workspaceId }) => [
             ctx.workspaces.list,
             ctx.locale,
-            ctx.remoteAccess.source('workspace', workspaceId, 'workspace/delete'),
+            readAccess('workspace', workspaceId, 'workspace/delete'),
           ],
           resolve: (target) => {
-            const allowed = ctx.remoteAccess.source('workspace', target.workspaceId, 'workspace/delete').getSnapshot()
+            const allowed = readAccess('workspace', target.workspaceId, 'workspace/delete').getSnapshot()
             if (!allowed) return []
             const workspace = ctx.workspaces.list.getSnapshot().items
               .find(item => item.workspaceId === target.workspaceId)

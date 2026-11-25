@@ -4,16 +4,20 @@ A DeepSeek Harness (DSH) plugin for workspace and session housekeeping.
 
 ## Features
 
-- Adds **Permanent delete session** to the session row's `…` / right-click
-  menu; no Settings trip and no keyboard shortcut is registered.
-- Adds **Delete workspace and its sessions** to the workspace row's menu:
-  confirmation shows the folder path and session count, then removes every
-  session, the workspace folder, and the workspace registration.
+- Adds **Delete session** to the session row's `…` / right-click menu; no
+  Settings trip and no keyboard shortcut is registered.
+- Replaces the workspace row's delete entry with **Delete workspace**: the
+  confirmation keeps the native wording the product expects, shows the session
+  count and folder path, and then removes every session, the workspace folder,
+  and the workspace registration.
+- The plugin hides the native DSH workspace-delete action with a small
+  compatibility shim so only one delete entry is visible. Other access checks
+  are untouched; if a future DSH release makes the action inaccessible to
+  plugins, the native item may reappear.
 - Keeps the **Settings → Workspace curator** page for adding, renaming,
   reordering workspaces and for an overview of sessions.
 - Archiving a running session still stops its work first.
-- Shows session counts, folder paths, and a required checkbox before deleting
-  user files.
+- Shows session counts and folder paths before deleting user files.
 
 ## Install
 
