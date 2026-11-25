@@ -1080,39 +1080,122 @@ window.__ModuleLoader__.load({
           },
         }), 'workspace-curator: session delete menu')
 
-        ctx.effect(() => ctx.contextMenus.register({
-          id: 'workspace.workspaceCurator.deleteAll',
-          target: 'workspace',
-          order: 400,
-          observe: ({ workspaceId }) => [
-            ctx.workspaces.list,
-            ctx.locale,
-            readAccess('workspace', workspaceId, 'workspace/delete'),
-          ],
-          resolve: (target) => {
-            const allowed = readAccess('workspace', target.workspaceId, 'workspace/delete').getSnapshot()
-            if (!allowed) return []
-            const workspace = ctx.workspaces.list.getSnapshot().items
-              .find(item => item.workspaceId === target.workspaceId)
-            if (workspace === undefined) return []
-            return [{
-              id: 'deleteAll',
-              label: t('menu.deleteWorkspace'),
-              icon: { key: 'workspaceCurator.trash' },
-              danger: true,
-              separatorBefore: true,
-              run: () => {
-                requestDeletion({
-                  kind: 'workspace',
-                  id: target.workspaceId,
-                  title: target.displayTitle,
-                  path: workspace.path,
-                  count: workspace.sessionIds.length,
-                })
+        if (accessPatched) {
+          let disposeWorkspaceMenu
+          let workspaceMenuChecked = false
+          ctx.effect(() => {
+            disposeWorkspaceMenu = ctx.contextMenus.register({
+              id: 'workspace.workspaceCurator.deleteAll',
+              target: 'workspace',
+              order: 400,
+              observe: ({ workspaceId }) => [
+                ctx.workspaces.list,
+                ctx.locale,
+                readAccess('workspace', workspaceId, 'workspace/delete'),
+                ctx.remoteAccess.source('workspace', workspaceId, 'workspace/delete'),
+              ],
+              resolve: (target) => {
+                // If the shim was removed (for example by a DSH reload), the
+                // native action is visible again. Hide ours rather than ever
+                // showing two workspace-delete entries.
+                let nativeVisible = true
+                try {
+                  nativeVisible = ctx.remoteAccess.source('workspace', target.workspaceId, 'workspace/delete').getSnapshot() === true
+                } catch (error) {
+                  console.warn('workspace-curator: could not read native workspace delete visibility', error)
+                }
+                if (nativeVisible) return []
+                const allowed = readAccess('workspace', target.workspaceId, 'workspace/delete').getSnapshot()
+                if (!allowed) return []
+                const workspace = ctx.workspaces.list.getSnapshot().items
+                  .find(item => item.workspaceId === target.workspaceId)
+                if (workspace === undefined) return []
+                return [{
+                  id: 'deleteAll',
+                  label: t('menu.deleteWorkspace'),
+                  icon: { key: 'workspaceCurator.trash' },
+                  danger: true,
+                  separatorBefore: true,
+                  run: () => {
+                    requestDeletion({
+                      kind: 'workspace',
+                      id: target.workspaceId,
+                      title: target.displayTitle,
+                      path: workspace.path,
+                      count: workspace.sessionIds.length,
+                    })
+                  },
+                }]
               },
-            }]
-          },
-        }), 'workspace-curator: workspace delete menu')
+            })
+            return disposeWorkspaceMenu
+          }, 'workspace-curator: workspace delete menu')
+
+          const dropWorkspaceMenu = (reason) => {
+            if (workspaceMenuChecked) return
+            workspaceMenuChecked = true
+            if (disposeWorkspaceMenu !== undefined) {
+              disposeWorkspaceMenu()
+              disposeWorkspaceMenu = undefined
+            }
+            console.warn(reason)
+          }
+
+          // Verify against the real native provider before trusting the shim:
+          // if a DSH update changes how `workspace/delete` is read, the probe
+          // finds both actions and drops ours, so only one entry can be shown.
+          const verifyNoNativeEntry = async () => {
+            if (workspaceMenuChecked) return
+            const workspace = ctx.workspaces.list.getSnapshot().items[0]
+            if (workspace === undefined) return
+            let resolution
+            try {
+              resolution = ctx.contextMenus.resolve({
+                kind: 'workspace',
+                value: {
+                  workspaceId: workspace.workspaceId,
+                  path: workspace.path,
+                  displayTitle: workspace.title ?? workspace.path,
+                },
+              })
+              await resolution.ready
+              let nativeLabel
+              try { nativeLabel = ctx.locale.bind('workspace')('delete.workspace') } catch (_error) {}
+              const nativeVisible = resolution.source.getSnapshot().some(action =>
+                !action.id.startsWith('workspace.workspaceCurator.deleteAll/')
+                && (action.id === 'workspace.delete/delete'
+                  || (nativeLabel !== undefined && action.label === nativeLabel)))
+              if (nativeVisible) {
+                dropWorkspaceMenu('workspace-curator: native workspace delete is still visible; cascade menu is hidden to avoid a duplicate')
+              } else {
+                workspaceMenuChecked = true
+              }
+            } catch (error) {
+              dropWorkspaceMenu(`workspace-curator: workspace delete verification failed; cascade menu is hidden to avoid a duplicate (${String(error)})`)
+            } finally {
+              resolution?.dispose()
+            }
+          }
+
+          ctx.effect(() => {
+            let stopped = false
+            const check = () => {
+              if (stopped || workspaceMenuChecked) return
+              void verifyNoNativeEntry()
+            }
+            const detach = ctx.workspaces.list.subscribe(check)
+            check()
+            return () => {
+              stopped = true
+              detach()
+            }
+          }, 'workspace-curator: workspace delete duplicate guard')
+        } else {
+          // Never risk a second workspace-delete entry: when the native
+          // action cannot be hidden, keep only the native one. The Settings
+          // page still offers the cascade deletion.
+          console.warn('workspace-curator: native workspace delete action remains visible; cascade menu is hidden to avoid a duplicate')
+        }
 
         ctx.slots.inject('contextMenu.icon', () => ctx.slots.register({
           name: 'contextMenu.icon',

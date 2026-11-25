@@ -11,9 +11,11 @@ A DeepSeek Harness (DSH) plugin for workspace and session housekeeping.
   count and folder path, and then removes every session, the workspace folder,
   and the workspace registration.
 - The plugin hides the native DSH workspace-delete action with a small
-  compatibility shim so only one delete entry is visible. Other access checks
-  are untouched; if a future DSH release makes the action inaccessible to
-  plugins, the native item may reappear.
+  compatibility shim so only one delete entry is visible. At startup it also
+  resolves the real workspace menu and verifies the native action is absent; if
+  a DSH update changes that behavior, the plugin removes its own menu entry, so
+  the menu still shows at most one delete item (the native one). The Settings
+  page always keeps the cascade deletion.
 - The last remaining Workspace cannot be deleted: the dialog disables
   confirmation and the Host also refuses the request. DSH would otherwise
   initialize a fresh default Workspace with a blank Session after the restart.
