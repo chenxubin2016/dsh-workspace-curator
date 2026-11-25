@@ -2,9 +2,11 @@
 
 一个用于 **DeepSeek Harness（DSH）** 的工作区 / 会话管理插件：在会话和工作区的 `…` / 右键菜单里直接删除，也可以在设置页里集中管理。
 
-![删除会话与工作区操作演示](https://raw.githubusercontent.com/chenxubin2016/dsh-workspace-curator/main/docs/demo.gif)
+![删除会话与工作区操作演示](https://raw.githubusercontent.com/chenxubin2016/dsh-workspace-curator/main/docs/demo.gif?v=2)
 
 > 上图为操作示意：① 会话行 `…` →「删除会话」；② 工作区行 `…` →「删除工作区」。实际界面以当前 DSH 版本为准。
+>
+> 动画中的会话、项目名称与路径均为虚构示例。
 
 ## 2.0.0 更新内容
 
