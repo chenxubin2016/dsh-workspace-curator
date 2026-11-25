@@ -1,1 +1,1 @@
-操作步骤与说明见 README。
+![Animated demo: delete a session, then delete a workspace](demo.gif?v=4)
