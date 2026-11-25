@@ -1164,7 +1164,8 @@ window.__ModuleLoader__.load({
               const nativeVisible = resolution.source.getSnapshot().some(action =>
                 !action.id.startsWith('workspace.workspaceCurator.deleteAll/')
                 && (action.id === 'workspace.delete/delete'
-                  || (nativeLabel !== undefined && action.label === nativeLabel)))
+                  || (nativeLabel !== undefined && action.id.startsWith('workspace.')
+                    && action.label === nativeLabel)))
               if (nativeVisible) {
                 dropWorkspaceMenu('workspace-curator: native workspace delete is still visible; cascade menu is hidden to avoid a duplicate')
               } else {
