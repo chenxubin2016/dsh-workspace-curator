@@ -12,6 +12,7 @@ window.__ModuleLoader__.load({
   id: 'dsh-workspace-curator',
   factory(require) {
     const React = require('react')
+    const { createSnapshotStore } = require('@deepseek-ai/dsh-client-store')
     const {
       Button, Modal, Tooltip, relativeTime,
       IconChevronUpOutlineRegular, IconChevronDownOutlineRegular,
@@ -65,18 +66,22 @@ window.__ModuleLoader__.load({
       'badge.archived': '已归档',
       'badge.pinned': '已置顶',
       'badge.running': '运行中',
-      'confirm.workspace.title': '删除工作区？',
-      'confirm.workspace.body': '将把“{name}”从工作区列表中移除。文件夹与其会话都会保留，这些会话会显示在“未分组”下。',
-      'confirm.session.title': '永久删除此会话？',
-      'confirm.session.body': '“{name}”的会话日志会从磁盘移除，无法恢复。如果它包含子代理会话，这些子会话也会一并删除。只想隐藏请使用“归档”。',
       'confirm.archive.title': '停止并归档此会话？',
       'confirm.archive.body': '“{name}”仍在运行。归档会先停止它正在进行的工作，之后可在“全部对话（显示已归档）”中恢复；被停止的工作不会自动继续。',
       'confirm.cancel': '取消',
-      'confirm.deleteWorkspace': '删除工作区',
-      'confirm.deleteSession': '永久删除',
       'confirm.archiveAction': '停止并归档',
       'confirm.deleting': '正在删除…',
       'confirm.archiving': '正在停止并归档…',
+      'menu.deleteSession': '永久删除会话',
+      'menu.deleteWorkspace': '删除工作区及其会话',
+      'dialog.deleteSession.title': '永久删除此会话？',
+      'dialog.deleteSession.body': '“{name}”的会话日志会从磁盘移除，无法恢复。如果它包含子代理会话，这些子会话也会一并删除。',
+      'dialog.deleteWorkspace.title': '删除工作区及其会话？',
+      'dialog.deleteWorkspace.body': '将删除“{name}”下的 {count} 个会话，并永久删除文件夹：\n{path}\n文件夹中的所有文件（包括非 DSH 文件）都会消失，无法恢复。',
+      'dialog.liveNote': '正在打开或运行的会话会先停止并从列表移除；磁盘日志将在重启 DSH 后清理。',
+      'dialog.folderConfirm': '我确认删除该文件夹及其全部内容',
+      'dialog.deleteSession': '永久删除',
+      'dialog.deleteWorkspace': '全部删除',
       'rename.title': '重命名工作区',
       'rename.field': '工作区名称',
       'rename.submit': '保存',
@@ -85,14 +90,15 @@ window.__ModuleLoader__.load({
       'busy': '正在处理…',
       'notice.workspaceAdded': '工作区已就绪。',
       'notice.workspaceRenamed': '工作区已重命名。',
-      'notice.workspaceDeleted': '工作区已删除，其会话已移入“未分组”。',
+      'notice.workspaceDeleted': '工作区、文件夹及其会话已删除。',
       'notice.sessionDeleted': '会话已从磁盘删除。',
       'notice.sessionDeletedWarnings': '会话已删除，但部分引用未能清理：{message}',
       'notice.sessionAlreadyGone': '该会话已不存在，列表已刷新。',
+      'notice.sessionQueued': '会话已删除；重启 DSH 后完成磁盘清理。',
+      'notice.workspaceQueued': '已删除 {deleted} 个会话并移除工作区；{queued} 个打开中的会话将在重启 DSH 后完成磁盘清理。',
       'notice.sessionArchived': '会话已归档。',
       'notice.sessionUnarchived': '会话已取消归档。',
       'err.generic': '操作失败：{message}',
-      'err.open': '该会话在当前 DSH 运行期间打开过，暂时无法安全删除。请重启 DSH 后再试，或改用“归档”。',
       'err.active': '该会话仍有运行中的工作（回合、子代理、后台任务或定时提醒）。请先停止这些工作，或改用“归档”。',
       'err.refresh': '登录状态可能已失效。请刷新页面或重新打开 DSH 链接后再试。',
       'err.notFound': '该会话已不存在，列表已刷新。',
@@ -105,6 +111,9 @@ window.__ModuleLoader__.load({
       'err.pickerUnavailable': '当前环境不支持系统目录选择器，请直接输入文件夹路径。',
       'err.nameConflict': '已存在同名工作区，请换一个名称。',
       'err.invalidPath': '该路径不是可用的文件夹。',
+      'err.protectedPath': '该文件夹受保护（当前工作目录、home、DSH 目录或安装目录），不能删除。',
+      'err.folderFailed': '会话已处理，但文件夹删除失败：{message}',
+      'err.workspaceDeleteFailed': '删除工作区失败：{message}',
       'hint.archived': '已归档，取消归档后可打开',
       'hint.checking': '正在检查删除服务…',
       'hint.deleteUnavailable': '删除不可用：{reason}',
@@ -114,7 +123,7 @@ window.__ModuleLoader__.load({
       'time.days': '{n} 天前',
       'time.months': '{n} 个月前',
       'time.years': '{n} 年前',
-      'footer.note': '永久删除只移除会话日志；已上传的附件与缓存可能继续占用磁盘空间。',
+      'footer.note': '删除会话只移除日志；删除工作区会同时删除其文件夹。打开中的会话会在重启 DSH 后完成磁盘清理。',
     }
 
     const en = {
@@ -148,18 +157,22 @@ window.__ModuleLoader__.load({
       'badge.archived': 'Archived',
       'badge.pinned': 'Pinned',
       'badge.running': 'Running',
-      'confirm.workspace.title': 'Delete this workspace?',
-      'confirm.workspace.body': '“{name}” is removed from the workspace list. Its folder and sessions are kept; those sessions appear under “Ungrouped”.',
-      'confirm.session.title': 'Delete this session permanently?',
-      'confirm.session.body': 'The session log for “{name}” is removed from disk and cannot be recovered. Subagent sessions it contains are removed too. Use “Archive” to hide it instead.',
       'confirm.archive.title': 'Stop and archive this session?',
       'confirm.archive.body': '“{name}” is still running. Archiving first stops its work; you can restore it from “All conversations (including archived)”. Stopped work does not resume automatically.',
       'confirm.cancel': 'Cancel',
-      'confirm.deleteWorkspace': 'Delete workspace',
-      'confirm.deleteSession': 'Delete permanently',
       'confirm.archiveAction': 'Stop and archive',
       'confirm.deleting': 'Deleting…',
       'confirm.archiving': 'Stopping and archiving…',
+      'menu.deleteSession': 'Delete session permanently',
+      'menu.deleteWorkspace': 'Delete workspace and its sessions',
+      'dialog.deleteSession.title': 'Delete this session permanently?',
+      'dialog.deleteSession.body': 'The session log for “{name}” is removed from disk and cannot be recovered. Subagent sessions it contains are removed too.',
+      'dialog.deleteWorkspace.title': 'Delete this workspace and its sessions?',
+      'dialog.deleteWorkspace.body': 'This deletes {count} session(s) under “{name}” and permanently removes the folder:\n{path}\nEvery file in the folder, including files unrelated to DSH, is removed and cannot be recovered.',
+      'dialog.liveNote': 'Sessions that are open or running are stopped and removed from the list first; their logs are cleaned after DSH restarts.',
+      'dialog.folderConfirm': 'I confirm deleting this folder and everything in it',
+      'dialog.deleteSession': 'Delete permanently',
+      'dialog.deleteWorkspace': 'Delete all',
       'rename.title': 'Rename workspace',
       'rename.field': 'Workspace name',
       'rename.submit': 'Save',
@@ -168,14 +181,15 @@ window.__ModuleLoader__.load({
       'busy': 'Working…',
       'notice.workspaceAdded': 'Workspace is ready.',
       'notice.workspaceRenamed': 'Workspace renamed.',
-      'notice.workspaceDeleted': 'Workspace deleted; its sessions moved to “Ungrouped”.',
+      'notice.workspaceDeleted': 'Workspace, its folder, and its sessions were deleted.',
       'notice.sessionDeleted': 'Session removed from disk.',
       'notice.sessionDeletedWarnings': 'Session removed, but some references could not be cleared: {message}',
       'notice.sessionAlreadyGone': 'That session no longer exists; the list has been refreshed.',
+      'notice.sessionQueued': 'Session deleted; restart DSH to finish cleaning its disk log.',
+      'notice.workspaceQueued': 'Deleted {deleted} session(s) and removed the workspace; {queued} open session(s) are cleaned after DSH restarts.',
       'notice.sessionArchived': 'Session archived.',
       'notice.sessionUnarchived': 'Session unarchived.',
       'err.generic': 'Action failed: {message}',
-      'err.open': 'This session was opened during the current DSH run, so it cannot be deleted safely. Restart DSH and retry, or archive it instead.',
       'err.active': 'This session still has running work (a turn, subagent, background job, or reminder). Stop that work first, or archive the session instead.',
       'err.refresh': 'The browser session may have expired. Refresh the page or reopen the DSH link and try again.',
       'err.notFound': 'That session no longer exists; the list has been refreshed.',
@@ -188,6 +202,9 @@ window.__ModuleLoader__.load({
       'err.pickerUnavailable': 'This environment has no system folder picker; type the folder path instead.',
       'err.nameConflict': 'A workspace with that name already exists.',
       'err.invalidPath': 'That path is not a usable folder.',
+      'err.protectedPath': 'That folder is protected (a current working directory, home, or a DSH folder) and cannot be removed.',
+      'err.folderFailed': 'Sessions were handled, but the folder could not be removed: {message}',
+      'err.workspaceDeleteFailed': 'Deleting the workspace failed: {message}',
       'hint.archived': 'Archived; unarchive to open',
       'hint.checking': 'Checking the delete service…',
       'hint.deleteUnavailable': 'Deletion is unavailable: {reason}',
@@ -197,7 +214,7 @@ window.__ModuleLoader__.load({
       'time.days': '{n} days ago',
       'time.months': '{n} months ago',
       'time.years': '{n} years ago',
-      'footer.note': 'Permanent deletion removes the session log only; uploaded attachments and caches may keep using disk space.',
+      'footer.note': 'Deleting a session removes its log; deleting a workspace also removes its folder. Open sessions are cleaned after DSH restarts.',
     }
 
     /**
@@ -238,7 +255,6 @@ window.__ModuleLoader__.load({
     /** Map one Host/Workspace failure to localized copy. */
     function failureText(error, t) {
       switch (errorCode(error)) {
-        case 'session/open': return t('err.open')
         case 'session/active': return t('err.active')
         case 'session/not-found': return t('err.notFound')
         case 'session/bad-id': return t('err.badId')
@@ -249,6 +265,9 @@ window.__ModuleLoader__.load({
         case 'workspace/name-conflict': return t('err.nameConflict')
         case 'workspace/invalid-path': return t('err.invalidPath')
         case 'workspace/session-active': return t('err.archiveActive')
+        case 'workspace/protected-path': return t('err.protectedPath')
+        case 'workspace/folder-delete-failed': return t('err.folderFailed', { message: error?.message ?? String(error) })
+        case 'workspace/session-delete-failed': return t('err.workspaceDeleteFailed', { message: error?.message ?? String(error) })
         case 'directory-picker/unavailable': return t('err.pickerUnavailable')
         default: return t('err.generic', { message: error?.message ?? String(error) })
       }
@@ -258,18 +277,18 @@ window.__ModuleLoader__.load({
      * Call the Host delete endpoint. The connection layer authenticates the
      * browser cookie before the handler runs.
      * @param action - wire action.
-     * @param sessionId - target Session.
+     * @param payload - action payload.
      * @returns the parsed success payload.
      * @throws an Error carrying the Host code.
      */
-    async function callAdmin(action, sessionId) {
+    async function callAdmin(action, requestPayload) {
       const response = await fetch(ROUTE, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           'x-workspace-curator': '1',
         },
-        body: JSON.stringify({ action, sessionId }),
+        body: JSON.stringify({ action, ...requestPayload }),
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok || payload === null || payload.ok !== true) {
@@ -415,7 +434,7 @@ window.__ModuleLoader__.load({
           }, t('rename')),
           h(Button, {
             size: 'sm', icon: h(IconTrashOutlineRegular, { size: 14 }),
-            disabled, style: { color: T.danger }, onClick: () => actions.remove(workspace),
+            disabled: disabled || deleteHint !== null, style: { color: T.danger }, onClick: () => actions.remove(workspace),
           }, t('delete')))),
       h('div', {
         title: workspace.path,
@@ -446,7 +465,7 @@ window.__ModuleLoader__.load({
      * Settings page body.
      * @param props - shell close, injected services, and translator.
      */
-    function Page({ close, t, workspaces, sessions, uiWorkspace, subscribeLocale, localeRevision }) {
+    function Page({ close, t, workspaces, sessions, uiWorkspace, requestDeletion, subscribeLocale, localeRevision }) {
       React.useSyncExternalStore(subscribeLocale, localeRevision)
       const subscribeWorkspaces = React.useCallback(listener => workspaces.list.subscribe(listener), [workspaces])
       const readWorkspaces = React.useCallback(() => workspaces.list.getSnapshot(), [workspaces])
@@ -582,14 +601,18 @@ window.__ModuleLoader__.load({
       }, [busy, run, workspaceSnapshot, workspaces])
 
       const requestRemove = React.useCallback((workspace) => {
-        setConfirmError(null)
-        setConfirming({ kind: 'workspace', id: workspace.workspaceId, title: workspace.title })
-      }, [])
+        requestDeletion({
+          kind: 'workspace',
+          id: workspace.workspaceId,
+          title: workspace.title,
+          path: workspace.path,
+          count: workspace.sessionIds.length,
+        })
+      }, [requestDeletion])
 
       const requestDelete = React.useCallback((session) => {
-        setConfirmError(null)
-        setConfirming({ kind: 'session', id: session.id, title: session.displayTitle })
-      }, [])
+        requestDeletion({ kind: 'session', id: session.id, title: session.displayTitle })
+      }, [requestDeletion])
 
       const openSession = React.useCallback((sessionId) => {
         uiWorkspace.openSession(sessionId)
@@ -615,45 +638,6 @@ window.__ModuleLoader__.load({
         }, t('notice.sessionUnarchived'))
       }, [busy, run, t, uiWorkspace])
 
-      const deleteSession = React.useCallback(async (sessionId) => {
-        setConfirmBusy(true)
-        setConfirmError(null)
-        try {
-          const result = await callAdmin('delete-session', sessionId)
-          await sessions.refresh().catch(() => {})
-          setConfirming(null)
-          if (Array.isArray(result.warnings) && result.warnings.length > 0) {
-            say(t('notice.sessionDeletedWarnings', { message: result.warnings.join('; ') }), 'error')
-          } else if (result.alreadyGone === true) {
-            say(t('notice.sessionAlreadyGone'))
-          } else {
-            say(t('notice.sessionDeleted'))
-          }
-        } catch (error) {
-          if (error instanceof TypeError) {
-            setConfirmError(t('err.unavailable', { message: error.message }))
-          } else {
-            setConfirmError(failureText(error, t))
-          }
-        } finally {
-          setConfirmBusy(false)
-        }
-      }, [say, sessions, t])
-
-      const deleteWorkspace = React.useCallback(async (workspaceId) => {
-        setConfirmBusy(true)
-        setConfirmError(null)
-        try {
-          await workspaces.delete(workspaceId)
-          setConfirming(null)
-          say(t('notice.workspaceDeleted'))
-        } catch (error) {
-          setConfirmError(failureText(error, t))
-        } finally {
-          setConfirmBusy(false)
-        }
-      }, [say, t, workspaces])
-
       const stopAndArchive = React.useCallback(async (sessionId) => {
         setConfirmBusy(true)
         setConfirmError(null)
@@ -670,11 +654,9 @@ window.__ModuleLoader__.load({
 
       const confirmAction = React.useCallback(() => {
         const target = confirming
-        if (target === null || confirmBusy) return
-        if (target.kind === 'workspace') void deleteWorkspace(target.id)
-        else if (target.kind === 'session') void deleteSession(target.id)
-        else void stopAndArchive(target.id)
-      }, [confirmBusy, confirming, deleteSession, deleteWorkspace, stopAndArchive])
+        if (target === null || confirmBusy || target.kind !== 'archive') return
+        void stopAndArchive(target.id)
+      }, [confirmBusy, confirming, stopAndArchive])
 
       const openRename = React.useCallback((workspace) => {
         setRenaming(workspace)
@@ -711,21 +693,10 @@ window.__ModuleLoader__.load({
         : deleteReady === false
           ? t('hint.deleteUnavailable', { reason: deleteReason })
           : t('hint.checking')
-      const confirmTitle = confirming === null ? '' : confirming.kind === 'workspace'
-        ? t('confirm.workspace.title')
-        : confirming.kind === 'session' ? t('confirm.session.title') : t('confirm.archive.title')
-      const confirmBody = confirming === null ? '' : confirming.kind === 'workspace'
-        ? t('confirm.workspace.body', { name: confirming.title })
-        : confirming.kind === 'session'
-          ? t('confirm.session.body', { name: confirming.title })
-          : t('confirm.archive.body', { name: confirming.title })
-      const confirmLabel = confirming === null ? ''
-        : confirming.kind === 'workspace'
-          ? t('confirm.deleteWorkspace')
-          : confirming.kind === 'session' ? t('confirm.deleteSession') : t('confirm.archiveAction')
-      const confirmProgress = confirmBusy
-        ? (confirming?.kind === 'archive' ? t('confirm.archiving') : t('confirm.deleting'))
-        : confirmLabel
+      const confirmTitle = confirming === null ? '' : t('confirm.archive.title')
+      const confirmBody = confirming === null ? '' : t('confirm.archive.body', { name: confirming.title })
+      const confirmLabel = confirming === null ? '' : t('confirm.archiveAction')
+      const confirmProgress = confirmBusy ? t('confirm.archiving') : confirmLabel
 
       const sessionList = (list) => list.map(session => h(SessionRow, {
         key: session.id,
@@ -883,6 +854,113 @@ window.__ModuleLoader__.load({
       renameError === null ? null : h('div', { role: 'alert', style: { fontSize: 12, lineHeight: '18px', color: T.danger } }, renameError)))
     }
 
+    /**
+     * Global confirmation for Session/Workspace deletion, shared by the row
+     * menus and the Settings page. Rendered from `shell.overlay`.
+     */
+    function DeleteDialog({ t, dialog, uiWorkspace, workspaces, sessions, callAdmin, notify }) {
+      const request = React.useSyncExternalStore(dialog.subscribe, dialog.getSnapshot)
+      const [busy, setBusy] = React.useState(false)
+      const [error, setError] = React.useState(null)
+      const [folderConfirmed, setFolderConfirmed] = React.useState(false)
+
+      React.useEffect(() => {
+        setBusy(false)
+        setError(null)
+        setFolderConfirmed(false)
+      }, [request?.kind, request?.id])
+
+      if (request === null) return null
+
+      const isWorkspace = request.kind === 'workspace'
+      const close = () => {
+        if (busy) return
+        dialog.set(null)
+        setFolderConfirmed(false)
+        setError(null)
+      }
+      const confirm = () => {
+        if (busy || (isWorkspace && !folderConfirmed)) return
+        setBusy(true)
+        setError(null)
+        void (async () => {
+          try {
+            if (isWorkspace) {
+              const snapshot = workspaces.list.getSnapshot()
+              const workspace = snapshot.items.find(item => item.workspaceId === request.id)
+              const current = Object.values(sessions.list.getSnapshot().byId)
+                .find(row => (row.retainedBy?.mainView ?? 0) > 0)
+              if (workspace !== undefined && current !== undefined && workspace.sessionIds.includes(current.id)) {
+                await uiWorkspace.archiveSession(current.id, { stopActivity: true }).catch(() => {})
+              }
+              const result = await callAdmin('delete-workspace', { workspaceId: request.id, confirmFolder: true })
+              await sessions.refresh().catch(() => {})
+              dialog.set(null)
+              if (result.queued > 0) {
+                notify(t('notice.workspaceQueued', { deleted: result.deleted, queued: result.queued }), true)
+              } else {
+                notify(t('notice.workspaceDeleted'), true)
+              }
+              return
+            }
+
+            const archived = workspaces.list.getSnapshot().archivedSessionIds.includes(request.id)
+            if (!archived) {
+              await uiWorkspace.archiveSession(request.id, { stopActivity: true })
+            }
+            const result = await callAdmin('delete-session', { sessionId: request.id })
+            await sessions.refresh().catch(() => {})
+            dialog.set(null)
+            notify(result.queued === true ? t('notice.sessionQueued') : t('notice.sessionDeleted'), true)
+          } catch (failure) {
+            setError(failure instanceof TypeError
+              ? t('err.unavailable', { message: failure.message })
+              : failureText(failure, t))
+          } finally {
+            setBusy(false)
+          }
+        })()
+      }
+
+      const body = isWorkspace
+        ? t('dialog.deleteWorkspace.body', { name: request.title, count: request.count, path: request.path })
+        : t('dialog.deleteSession.body', { name: request.title })
+      return h(Modal, {
+        open: true,
+        onClose: close,
+        closeLabel: t('close'),
+        title: isWorkspace ? t('dialog.deleteWorkspace.title') : t('dialog.deleteSession.title'),
+        description: body,
+        tone: 'warning',
+        footer: h(React.Fragment, null,
+          h(Button, { variant: 'outline', disabled: busy, onClick: close }, t('confirm.cancel')),
+          h(Button, {
+            variant: 'outline',
+            style: { color: T.danger },
+            disabled: busy || (isWorkspace && !folderConfirmed),
+            onClick: confirm,
+          }, busy ? t('confirm.deleting') : (isWorkspace ? t('dialog.deleteWorkspace') : t('dialog.deleteSession')))),
+      },
+      h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+        h('div', { style: { fontSize: 12, lineHeight: '18px', color: T.tertiary } }, t('dialog.liveNote')),
+        isWorkspace ? h('label', {
+          style: { display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, lineHeight: '18px', color: T.secondary },
+        },
+        h('input', {
+          type: 'checkbox',
+          checked: folderConfirmed,
+          disabled: busy,
+          onChange: event => { setFolderConfirmed(event.target.checked) },
+        }),
+        t('dialog.folderConfirm')) : null,
+        error === null ? null : h('div', { role: 'alert', style: { fontSize: 12, lineHeight: '18px', color: T.danger } }, error)))
+    }
+
+    /** Menu icon used by the delete contributions. */
+    function TrashIcon({ size = 16 }) {
+      return h(IconTrashOutlineRegular, { size })
+    }
+
     /** Navigation glyph: a folder with a removal cross, drawn in currentColor. */
     function AdminIcon({ size = 16 }) {
       return h('svg', {
@@ -896,17 +974,101 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'workspaces', 'sessions', 'uiWorkspace'],
+      inject: ['slots', 'locale', 'contextMenus', 'remoteAccess', 'workspaces', 'sessions', 'uiWorkspace'],
       apply(ctx) {
         const t = ctx.locale.bind(NS)
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'workspace-curator: dictionaries')
         const subscribeLocale = listener => ctx.locale.subscribe(listener)
         const localeRevision = () => ctx.locale.getSnapshot().revision
+        const deletionRequest = createSnapshotStore(null)
+        const requestDeletion = request => { deletionRequest.set(request) }
+        const notify = (text, success) => { ctx.contextMenus.notify(text, success) }
+
+        ctx.effect(() => ctx.contextMenus.register({
+          id: 'session.workspaceCurator.delete',
+          target: 'session',
+          order: 700,
+          observe: ({ sessionId }) => [
+            ctx.workspaces.list,
+            ctx.locale,
+            ctx.remoteAccess.source('session', sessionId, 'workspace/archiveSession'),
+          ],
+          resolve: (target) => {
+            const allowed = ctx.remoteAccess.source('session', target.sessionId, 'workspace/archiveSession').getSnapshot()
+            if (!allowed) return []
+            return [{
+              id: 'delete',
+              label: t('menu.deleteSession'),
+              icon: { key: 'workspaceCurator.trash' },
+              danger: true,
+              separatorBefore: true,
+              run: () => {
+                requestDeletion({ kind: 'session', id: target.sessionId, title: target.displayTitle })
+              },
+            }]
+          },
+        }), 'workspace-curator: session delete menu')
+
+        ctx.effect(() => ctx.contextMenus.register({
+          id: 'workspace.workspaceCurator.deleteAll',
+          target: 'workspace',
+          order: 400,
+          observe: ({ workspaceId }) => [
+            ctx.workspaces.list,
+            ctx.locale,
+            ctx.remoteAccess.source('workspace', workspaceId, 'workspace/delete'),
+          ],
+          resolve: (target) => {
+            const allowed = ctx.remoteAccess.source('workspace', target.workspaceId, 'workspace/delete').getSnapshot()
+            if (!allowed) return []
+            const workspace = ctx.workspaces.list.getSnapshot().items
+              .find(item => item.workspaceId === target.workspaceId)
+            if (workspace === undefined) return []
+            return [{
+              id: 'deleteAll',
+              label: t('menu.deleteWorkspace'),
+              icon: { key: 'workspaceCurator.trash' },
+              danger: true,
+              separatorBefore: true,
+              run: () => {
+                requestDeletion({
+                  kind: 'workspace',
+                  id: target.workspaceId,
+                  title: target.displayTitle,
+                  path: workspace.path,
+                  count: workspace.sessionIds.length,
+                })
+              },
+            }]
+          },
+        }), 'workspace-curator: workspace delete menu')
+
+        ctx.slots.inject('contextMenu.icon', () => ctx.slots.register({
+          name: 'contextMenu.icon',
+          key: 'workspaceCurator.trash',
+        }, TrashIcon))
+
+        ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+          name: 'shell.overlay',
+          id: 'workspaceCurator.delete-dialog',
+          locale: NS,
+          inject: () => ({
+            t,
+            dialog: deletionRequest,
+            uiWorkspace: ctx.uiWorkspace,
+            workspaces: ctx.workspaces,
+            sessions: ctx.sessions,
+            callAdmin,
+            notify,
+          }),
+        }, DeleteDialog))
+
         const injected = () => ({
           t,
           workspaces: ctx.workspaces,
           sessions: ctx.sessions,
           uiWorkspace: ctx.uiWorkspace,
+          requestDeletion,
           subscribeLocale,
           localeRevision,
         })

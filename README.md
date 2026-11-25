@@ -1,24 +1,23 @@
 # Workspace curator
 
-A DeepSeek Harness (DSH) plugin that adds one **Settings → Workspace curator**
-page for workspace and session housekeeping.
+A DeepSeek Harness (DSH) plugin for workspace and session housekeeping.
 
 ## Features
 
-- Lists ungrouped sessions first, then every workspace with its canonical path
-  and session count.
-- Adds a workspace from an existing folder (system folder picker or typed path).
-- Renames a workspace and moves it up or down in the registry order.
-- Removes a workspace registration; its folder and sessions stay, and the
-  sessions move to **Ungrouped**.
-- Opens a session, archives or restores it, and permanently deletes it.
-- Archiving a running session asks first, then stops its work and archives it.
-- Shows archived, pinned, and running badges, and disables Delete with a
-  visible reason when the Host cannot accept it.
+- Adds **Permanent delete session** to the session row's `…` / right-click
+  menu; no Settings trip and no keyboard shortcut is registered.
+- Adds **Delete workspace and its sessions** to the workspace row's menu:
+  confirmation shows the folder path and session count, then removes every
+  session, the workspace folder, and the workspace registration.
+- Keeps the **Settings → Workspace curator** page for adding, renaming,
+  reordering workspaces and for an overview of sessions.
+- Archiving a running session still stops its work first.
+- Shows session counts, folder paths, and a required checkbox before deleting
+  user files.
 
 ## Install
 
-From the plugin market: search for **Workspace curator**, or install from npm:
+From the plugin market, or:
 
 ```sh
 dsh plugin --profile web add dsh-workspace-curator
@@ -27,50 +26,44 @@ dsh plugin --profile web add dsh-workspace-curator
 Desktop users install through **Settings → Plugins**. Use the profile name your
 Host actually runs instead of `web` when it differs.
 
-Requires DSH `0.2.2-rc.1` or newer.
+Requires DSH `0.2.2-rc.5` or newer.
 
-## Permanent session deletion
+## Permanent deletion
 
-DSH's session persistence seam has no delete verb, so this bundle ships a small
-Host endpoint. Before removing anything it:
+DSH's session persistence seam has no delete verb, so this bundle removes the
+log directories itself. Confirmation is required before anything is removed.
 
-1. collects the session and its subagent descendants;
-2. refuses while any member is live in this Host process;
-3. refuses while a composed activity provider reports running work (a turn,
-   subagent, background job, or reminder);
-4. validates every log directory against the persistence-reported layout;
-5. removes the session log directories;
-6. detaches the ids from workspace accounts, the archive set, and the pin set;
-7. announces removal so open pages drop the rows.
+- **Cold session**: log, subagent descendants, workspace account references,
+  archive entry, and pin entry are removed immediately.
+- **Live session**: the Agent still owns a write handle, so the session is
+  archived (its running work stops and it disappears from the list) and its id
+  is queued. The log is removed at the next DSH start. The UI shows
+  **restart DSH to finish cleaning the disk log**; it no longer refuses the
+  action.
+- **Workspace**: every session is deleted or queued, then the workspace folder
+  is removed recursively, then the registration is removed. The folder may
+  contain files unrelated to DSH; the confirmation says so and requires an
+  explicit checkbox. The Host refuses to remove the running working directory,
+  the home directory, filesystem roots, or DSH-managed folders.
 
-Only session logs are removed. Uploaded attachments, projection caches, and
-usage statistics are not reclaimed. Deletion is permanent; use **Archive** when
-you only want to hide a session.
-
-A session opened during the current DSH run cannot be deleted until the Host
-restarts, because its live Agent still owns a write handle.
+Only session logs and the selected workspace folder are removed. Attachments
+and projection caches outside the folder may remain.
 
 ## Endpoint trust
 
-`/api/workspace-curator` is an exact Fetch route on DSH's shared `/api` channel.
-The connection layer authenticates the browser cookie and applies its
+`/api/workspace-curator` is an exact Fetch route on DSH's shared `/api`
+channel. The connection layer authenticates the browser cookie and applies its
 Host/Origin fence before the handler runs. The handler additionally requires
-`x-workspace-curator: 1` and `content-type: application/json` on `POST`, which a
-cross-site form or simple fetch cannot send. A request without a valid browser
-session receives the connection layer's `401` and never reaches deletion.
-
-Run a single DSH Host per session store. The lock file in a session directory is
-an empty placeholder and cannot distinguish an idle session from one another
-Host process is writing.
+`x-workspace-curator: 1` and `content-type: application/json` on `POST`.
 
 ## Development
 
-The package is a plain ES module bundle; no build step is required.
-
-- `index.js` — Host route and request handling.
-- `session-delete.js` — deletion tree, activity checks, and storage validation.
-- `client.js` — Settings page registered through the Web client module table.
-- `cordis.patch.yml` — inserts the plugin row.
+- `index.js` — Host route.
+- `session-delete.js` — per-session deletion tree and storage validation.
+- `pending-deletions.js` — durable queue for live sessions.
+- `workspace-delete.js` — cascade, folder removal, and path protection.
+- `client.js` — Settings page, context-menu contributions, and confirmation
+  overlay.
 
 ## License
 

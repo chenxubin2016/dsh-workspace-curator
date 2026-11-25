@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Workspace curator",
-    "description": "A Settings page for workspace and session housekeeping: add, rename, reorder or remove workspaces, and archive or permanently delete sessions, refusing open or still-active ones.",
+    "description": "A Settings page and row menus for workspace and session housekeeping: add, rename, or reorder workspaces, permanently delete sessions, and delete a workspace together with its folder. Sessions opened in the current run are archived immediately and have their logs cleaned after DSH restarts.",
     "detail": "docs/DETAIL.md"
   }
 }

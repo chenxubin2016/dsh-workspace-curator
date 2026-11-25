@@ -1,6 +1,6 @@
 {
   "name": "dsh-workspace-curator",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Manage workspaces and sessions from one Settings page.",
   "type": "module",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "settings"
   ],
   "engines": {
-    "dsh": ">=0.2.2-rc.1"
+    "dsh": ">=0.2.2-rc.5"
   },
   "exports": {
     ".": "./index.js",
@@ -32,6 +32,8 @@
   },
   "files": [
     "index.js",
+    "workspace-delete.js",
+    "pending-deletions.js",
     "session-delete.js",
     "client.js",
     "cordis.patch.yml",
@@ -42,7 +44,9 @@
     "LICENSE"
   ],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "immediately": true
