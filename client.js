@@ -97,6 +97,7 @@ window.__ModuleLoader__.load({
       'notice.sessionAlreadyGone': '该会话已不存在，列表已刷新。',
       'notice.sessionQueued': '会话已删除；重启 DSH 后完成磁盘清理。',
       'notice.workspaceQueued': '已删除 {total} 个会话并移除工作区；其中 {queued} 个打开中的会话将在重启 DSH 后完成磁盘清理。',
+      'notice.workspaceDeletedWarnings': '工作区已删除，但部分引用未能清理：{message}',
       'notice.sessionArchived': '会话已归档。',
       'notice.sessionUnarchived': '会话已取消归档。',
       'err.generic': '操作失败：{message}',
@@ -189,6 +190,7 @@ window.__ModuleLoader__.load({
       'notice.sessionAlreadyGone': 'That session no longer exists; the list has been refreshed.',
       'notice.sessionQueued': 'Session deleted; restart DSH to finish cleaning its disk log.',
       'notice.workspaceQueued': 'Deleted {total} session(s) and removed the workspace; {queued} open session(s) are cleaned after DSH restarts.',
+      'notice.workspaceDeletedWarnings': 'Workspace removed, but some references could not be cleared: {message}',
       'notice.sessionArchived': 'Session archived.',
       'notice.sessionUnarchived': 'Session unarchived.',
       'err.generic': 'Action failed: {message}',
@@ -911,7 +913,9 @@ window.__ModuleLoader__.load({
               const result = await callAdmin('delete-workspace', { workspaceId: request.id, confirmFolder: true })
               await sessions.refresh().catch(() => {})
               dialog.set(null)
-              if (result.queued > 0) {
+              if (Array.isArray(result.warnings) && result.warnings.length > 0) {
+                notify(t('notice.workspaceDeletedWarnings', { message: result.warnings.join('; ') }), false)
+              } else if (result.queued > 0) {
                 notify(t('notice.workspaceQueued', { total: result.deleted + result.queued, queued: result.queued }), true)
               } else {
                 notify(t('notice.workspaceDeleted'), true)
@@ -935,7 +939,13 @@ window.__ModuleLoader__.load({
             const result = await callAdmin('delete-session', { sessionId: request.id })
             await sessions.refresh().catch(() => {})
             dialog.set(null)
-            notify(result.queued === true ? t('notice.sessionQueued') : t('notice.sessionDeleted'), true)
+            if (Array.isArray(result.warnings) && result.warnings.length > 0) {
+              notify(t('notice.sessionDeletedWarnings', { message: result.warnings.join('; ') }), false)
+            } else if (result.alreadyGone === true) {
+              notify(t('notice.sessionAlreadyGone'), true)
+            } else {
+              notify(result.queued === true ? t('notice.sessionQueued') : t('notice.sessionDeleted'), true)
+            }
           } catch (failure) {
             setError(failure instanceof TypeError
               ? t('err.unavailable', { message: failure.message })
