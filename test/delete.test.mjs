@@ -91,3 +91,23 @@ test('cold session is deleted immediately without touching the queue', async () 
     await rm(f.root, { recursive: true, force: true })
   }
 })
+
+test('a just-created live session is deleted after archiving clears its turn', async () => {
+  const f = await fixture()
+  try {
+    let active = true
+    f.ctx.waterfall = async () => active ? [{ kind: 'turn' }] : []
+    const archive = f.ctx.workspaceRegistry.archiveSession
+    f.ctx.workspaceRegistry.archiveSession = async id => {
+      await archive(id)
+      active = false
+    }
+    const result = await deleteOrQueueSession(f.ctx, { queue: async id => { f.queued.push(id) } }, SESSION_ID)
+    assert.equal(result.deleted, true)
+    assert.equal(result.queued, false)
+    assert.deepEqual(f.queued, [])
+    await assert.rejects(stat(f.dir))
+  } finally {
+    await rm(f.root, { recursive: true, force: true })
+  }
+})

@@ -102,20 +102,34 @@ export async function deleteOrQueueSession(ctx, pending, sessionId) {
     }
   }
 
-  try {
-    const result = await deleteStoredSession(ctx, sessionId, { allowLive: live })
-    return { deleted: true, queued: false, result }
-  } catch (error) {
-    if (!live) throw error
-    // A live Agent owns the log. Try the removal after archiving; only when the
-    // filesystem still holds it do we defer to the next Host start.
-    if (error instanceof AdminError
-      && (error.code === 'session/unsupported-layout' || error.code === 'session/bad-id')) {
-      throw error
+  let lastError
+  // Archiving stops activity, but providers can take a moment to clear.
+  // Give a just-created/just-stopped session a short window to become idle so
+  // the common case is a real deletion instead of an archived queued row.
+  const attempts = live ? 9 : 1
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const result = await deleteStoredSession(ctx, sessionId, { allowLive: live })
+      return { deleted: true, queued: false, result }
+    } catch (error) {
+      lastError = error
+      const retry = live && error instanceof AdminError && error.code === 'session/active'
+        && attempt < attempts - 1
+      if (!retry) break
+      await new Promise(resolve => setTimeout(resolve, 250))
     }
-    await pending.queue(sessionId)
-    return { deleted: false, queued: true }
   }
+
+  if (!live) throw lastError
+  // A live Agent owns the log. Try the removal after archiving; only when the
+  // filesystem or an activity provider still holds it do we defer to the next
+  // Host start.
+  if (lastError instanceof AdminError
+    && (lastError.code === 'session/unsupported-layout' || lastError.code === 'session/bad-id')) {
+    throw lastError
+  }
+  await pending.queue(sessionId)
+  return { deleted: false, queued: true }
 }
 
 /**
