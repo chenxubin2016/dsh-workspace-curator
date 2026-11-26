@@ -100,36 +100,17 @@ export async function deleteOrQueueSession(ctx, pending, sessionId) {
     if (!archived) {
       await ctx.workspaceRegistry.archiveSession(sessionId, { stopActivity: true })
     }
-  }
-
-  let lastError
-  // Archiving stops activity, but providers can take a moment to clear.
-  // Give a just-created/just-stopped session a short window to become idle so
-  // the common case is a real deletion instead of an archived queued row.
-  const attempts = live ? 9 : 1
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      const result = await deleteStoredSession(ctx, sessionId, { allowLive: live })
-      return { deleted: true, queued: false, result }
-    } catch (error) {
-      lastError = error
-      const retry = live && error instanceof AdminError && error.code === 'session/active'
-        && attempt < attempts - 1
-      if (!retry) break
-      await new Promise(resolve => setTimeout(resolve, 250))
+    if (live) {
+      // DSH owns the live Agent; deleting its log or detaching its Workspace
+      // account now lets the Agent recreate an ungrouped Session. Keep the log
+      // and the account intact, and remove the log only after restart.
+      await pending.queue(sessionId)
+      return { deleted: false, queued: true }
     }
   }
 
-  if (!live) throw lastError
-  // A live Agent owns the log. Try the removal after archiving; only when the
-  // filesystem or an activity provider still holds it do we defer to the next
-  // Host start.
-  if (lastError instanceof AdminError
-    && (lastError.code === 'session/unsupported-layout' || lastError.code === 'session/bad-id')) {
-    throw lastError
-  }
-  await pending.queue(sessionId)
-  return { deleted: false, queued: true }
+  const result = await deleteStoredSession(ctx, sessionId)
+  return { deleted: true, queued: false, result }
 }
 
 /**
@@ -173,6 +154,11 @@ export async function deleteWorkspaceTree(ctx, pending, workspaceId) {
     }
     if (outcome.queued) {
       queued += 1
+      try {
+        ctx.emit('api-session/removed', sessionId)
+      } catch (error) {
+        warnings.push(`queued announcement failed: ${String(error)}`)
+      }
     } else {
       deleted += 1
       try {

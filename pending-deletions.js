@@ -123,10 +123,7 @@ export class PendingDeletions {
     const entries = await this.entries()
     for (const [sessionId] of entries) {
       try {
-        // The Session was already archived when it entered this queue. A live
-        // Agent must not keep an intentionally deleted log around forever, so
-        // allow the same post-archive removal as an interactive delete.
-        const result = await deleteStoredSession(this.ctx, sessionId, { allowLive: true })
+        const result = await deleteStoredSession(this.ctx, sessionId)
         try {
           this.ctx.emit('api-session/removed', sessionId)
         } catch (error) {

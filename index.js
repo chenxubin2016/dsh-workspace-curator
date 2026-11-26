@@ -83,6 +83,14 @@ async function handle(ctx, request, pending) {
       }
       const outcome = await deleteOrQueueSession(ctx, pending, sessionId)
       if (outcome.queued) {
+        // The row should disappear now even though the log is kept until the
+        // next Host start; removing it from the client list avoids showing a
+        // stale archived row.
+        try {
+          ctx.emit('api-session/removed', sessionId)
+        } catch (error) {
+          ctx.logger?.warn?.(`workspace-curator: queued removal announcement failed for "${sessionId}": ${String(error)}`)
+        }
         return json(200, { ok: true, sessionId, queued: true, requiresRestart: true })
       }
       try {
