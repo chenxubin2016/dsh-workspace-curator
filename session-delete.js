@@ -37,12 +37,14 @@ export class AdminError extends Error {
  * Permanently remove one Session tree.
  * @param ctx - Host context carrying the Session store, Agents, persistence, and Workspace registry.
  * @param sessionId - Session identity validated by the route.
+ * @param options - `allowLive` skips the in-process Agent guard after the caller
+ *   has archived and stopped the Session; activity is still checked.
  * @returns removed paths, warnings, and whether the log was already gone.
- * @throws {AdminError} when a Session is live or active, or stored in an unexpected layout.
+ * @throws {AdminError} when a Session is active, live without `allowLive`, or stored in an unexpected layout.
  */
-export async function deleteStoredSession(ctx, sessionId) {
+export async function deleteStoredSession(ctx, sessionId, options = {}) {
   const targets = await collectTree(ctx, sessionId)
-  await assertInactive(ctx, targets)
+  await assertInactive(ctx, targets, options.allowLive === true)
   const removals = await resolveRemovals(ctx, targets)
   // Children first, so an interrupted removal never leaves a live child whose
   // parent log is already gone.
@@ -93,12 +95,12 @@ async function collectTree(ctx, root) {
  * @param targets - root and subagent descendants.
  * @throws {AdminError} naming the first live or active member.
  */
-async function assertInactive(ctx, targets) {
+async function assertInactive(ctx, targets, allowLive = false) {
   for (const id of targets) {
-    if (ctx.sessions.get(id) !== undefined) {
+    if (!allowLive && ctx.sessions.get(id) !== undefined) {
       throw new AdminError('session/open', `Session "${id}" is live in this process`, 409, { sessionId: id })
     }
-    if (ctx.agents.get(id) !== undefined) {
+    if (!allowLive && ctx.agents.get(id) !== undefined) {
       throw new AdminError('session/open', `Session "${id}" still owns a live Agent`, 409, { sessionId: id })
     }
     const activity = await readActivity(ctx, id)

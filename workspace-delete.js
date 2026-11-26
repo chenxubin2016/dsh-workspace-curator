@@ -100,14 +100,22 @@ export async function deleteOrQueueSession(ctx, pending, sessionId) {
     if (!archived) {
       await ctx.workspaceRegistry.archiveSession(sessionId, { stopActivity: true })
     }
-    if (live) {
-      await pending.queue(sessionId)
-      return { deleted: false, queued: true }
-    }
   }
 
-  const result = await deleteStoredSession(ctx, sessionId)
-  return { deleted: true, queued: false, result }
+  try {
+    const result = await deleteStoredSession(ctx, sessionId, { allowLive: live })
+    return { deleted: true, queued: false, result }
+  } catch (error) {
+    if (!live) throw error
+    // A live Agent owns the log. Try the removal after archiving; only when the
+    // filesystem still holds it do we defer to the next Host start.
+    if (error instanceof AdminError
+      && (error.code === 'session/unsupported-layout' || error.code === 'session/bad-id')) {
+      throw error
+    }
+    await pending.queue(sessionId)
+    return { deleted: false, queued: true }
+  }
 }
 
 /**
