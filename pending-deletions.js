@@ -122,6 +122,13 @@ export class PendingDeletions {
   async cleanup() {
     const entries = await this.entries()
     for (const [sessionId] of entries) {
+      // A queued Session must be invisible now even when its live Agent keeps
+      // the log until restart. The actual deletion below may still defer.
+      try {
+        this.ctx.emit('api-session/removed', sessionId)
+      } catch (error) {
+        this.ctx.logger?.warn?.(`workspace-curator: queued removal announcement failed for "${sessionId}": ${String(error)}`)
+      }
       try {
         const result = await deleteStoredSession(this.ctx, sessionId)
         try {

@@ -1,6 +1,6 @@
 {
   "name": "dsh-workspace-curator",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Manage workspaces and sessions from row menus or Settings, including permanent deletion.",
   "type": "module",
   "license": "MIT",

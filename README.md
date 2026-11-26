@@ -10,6 +10,10 @@
 >
 > 动画中的会话、项目名称与路径均为虚构示例。
 
+## 2.0.3 显示修复
+
+排队删除后不再调用会话列表 `sessions.refresh()`。之前这一步会把刚归档的会话重新拉回列表，看起来像“删除后变成归档”。现在只依赖 Host 的 `api-session/removed` 事件移除行；磁盘日志仍然在重启 DSH 后清理。
+
 ## 2.0.2 稳定版：删除逻辑重做
 
 2.0.1 曾尝试在归档后直接删除 live 会话日志。这会导致 DSH 的 live Agent 在日志被移除后重新写入一个没有工作区归属的会话，表现为会话跑到「未分组」。2.0.2 恢复并固化安全不变量：
@@ -102,7 +106,7 @@
 从插件市场安装，或执行：
 
 ```sh
-dsh plugin --profile web add dsh-workspace-curator@2.0.2
+dsh plugin --profile web add dsh-workspace-curator@2.0.3
 ```
 
 桌面端可以在 **设置 → 插件** 中安装。请把 `web` 换成你实际运行的 profile 名称。

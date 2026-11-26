@@ -919,7 +919,10 @@ window.__ModuleLoader__.load({
                 }
               }
               const result = await callAdmin('delete-workspace', { workspaceId: request.id, confirmFolder: true })
-              await sessions.refresh().catch(() => {})
+              // Queued sessions are still archived on disk for the next start.
+              // Refreshing here would pull those summaries back into the list;
+              // the Host's removal event is the authoritative row update.
+              if ((result.queued ?? 0) === 0) await sessions.refresh().catch(() => {})
               dialog.set(null)
               if (Array.isArray(result.warnings) && result.warnings.length > 0) {
                 notify(t('notice.workspaceDeletedWarnings', { message: result.warnings.join('; ') }), false)
@@ -945,7 +948,9 @@ window.__ModuleLoader__.load({
               }
             }
             const result = await callAdmin('delete-session', { sessionId: request.id })
-            await sessions.refresh().catch(() => {})
+            // Do not refresh a queued deletion: the session still exists as an
+            // archived log until restart, and a list pull would show it again.
+            if (result.queued !== true) await sessions.refresh().catch(() => {})
             dialog.set(null)
             if (Array.isArray(result.warnings) && result.warnings.length > 0) {
               notify(t('notice.sessionDeletedWarnings', { message: result.warnings.join('; ') }), false)
